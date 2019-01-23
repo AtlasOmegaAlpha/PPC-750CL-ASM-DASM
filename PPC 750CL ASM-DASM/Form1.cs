@@ -33,16 +33,50 @@ namespace PPC_750CL_ASM_DASM
                 // add (add, add., addo, addo.), addc (addc, addc. addco, addco.), adde (adde, adde., addeo, addeo.),
                 // addme (addme, addme., addmeo, addmeo.). addze (addze, addze., addzeo, addzeo.), and (and, and.), andc (andc, andc.),
                 // cmp, cmpl, cntlzw (cntlzw, cntlzw.), dcbf, dcbi, dcbst, dcbt, dcbtst, divw, divwu, eciwx, ecowx, eieio, eqv (eqv, eqv.)
-                // extsb, extsh
+                // extsb, extsh, icbi
                 {
-                    UInt32 rD = ReadBits(m[i], 5); // Reserved on dcbf, dcbi, dcbst, dcbt, dcbtst, eieio; rS on ecowx, eqv, extsb, extsh
+                    UInt32 rD = ReadBits(m[i], 5);
+                    // Reserved on dcbf, dcbi, dcbst, dcbt, dcbtst, eieio; rS on and, andc, cntlzw, ecowx, eqv, extsb, extsh, icbi
                     UInt32 rA = ReadBits(m[i], 5); // Reserved on eieio
-                    UInt32 rB = ReadBits(m[i], 5); // Reserved on eieio, extsb, extsh
+                    UInt32 rB = ReadBits(m[i], 5); // Reserved on addme, addze, cntlzw, eieio, extsb, extsh
                     UInt32 OE = ReadBits(m[i], 1);
                     UInt32 SO = ReadBits(m[i], 9);
                     UInt32 Rc = ReadBits(m[i], 1); // Reserved on dcbf, dcbi, dcbst, dcbt, dcbtst, eciwx, ecowx, eieio
                     String CS = " ";
-                    if (SO == 0 || SO == 32) // cmp, cmpl
+                    CS += "r" + rD.ToString() + ", r" + rA.ToString() + ", r" + rB.ToString();
+                    if (SO == 266) // add
+                    {
+                        Output = "add";
+                    }
+                    else if (SO == 10) // addc
+                    {
+                        Output = "addc";
+                    }
+                    else if (SO == 138) // adde
+                    {
+                        Output = "adde";
+                    }
+                    else if (SO == 234) // addme
+                    {
+                        Output = "addme";
+                        CS = " r" + rD.ToString() + ", r" + rA.ToString();
+                    }
+                    else if (SO == 202) // addze
+                    {
+                        Output = "addze";
+                        CS = " r" + rD.ToString() + ", r" + rA.ToString();
+                    }
+                    else if (SO == 28) // and
+                    {
+                        Output = "and";
+                        CS = " r" + rA.ToString() + ", r" + rD.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 29) // andc
+                    {
+                        Output = "andc";
+                        CS = " r" + rA.ToString() + ", r" + rD.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 0 || SO == 32) // cmp, cmpl
                     {
                         p = 6;
                         UInt32 crfD = ReadBits(m[i], 3);
@@ -56,7 +90,62 @@ namespace PPC_750CL_ASM_DASM
                         {
                             Output += "l";
                         }
-
+                    }
+                    else if (SO == 26) // cntlzw
+                    {
+                        Output = "cntlzw";
+                        CS = " r" + rA.ToString() + ", r" + rD.ToString();
+                    }
+                    else if (SO == 86) // dcbf
+                    {
+                        Output = "dcbf";
+                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 470) // dcbi
+                    {
+                        Output = "dcbi";
+                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 54) // dcbst
+                    {
+                        Output = "dcbst";
+                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 278) // dcbt
+                    {
+                        Output = "dcbt";
+                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 246) // dcbtst
+                    {
+                        Output = "dcbtst";
+                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 502) // dcbz (Actually 1014, but the previous bit (1) is from OE)
+                    {
+                        Output = "dcbz";
+                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 491) // divw
+                    {
+                        Output = "divw";
+                    }
+                    else if (SO == 459) // divwu
+                    {
+                        Output = "divwu";
+                    }
+                    else if (SO == 310) // eciwx
+                    {
+                        Output = "eciwx";
+                    }
+                    else if (SO == 438) // ecowx
+                    {
+                        Output = "ecowx";
+                    }
+                    else if (SO == 342) // eieio (Actually 854, but the previous bit (1) is from OE)
+                    {
+                        Output = "eieio";
+                        CS = "";
                     }
                     else if (SO == 284) // eqv
                     {
@@ -64,126 +153,36 @@ namespace PPC_750CL_ASM_DASM
                         rB = ReadBits(m[i], 6);
                         Output = "eqv";
                         CS = " r" + rA.ToString() + ", r" + rD.ToString() + ", r" + rB.ToString();
-                        if (Rc == 1) // .
-                        {
-                            Output += ".";
-                        }
+                    }
+                    else if (SO == 442) // extsb (Actually 954, but the previous bit (1) is from OE)
+                    {
+                        Output = "extsb";
+                        CS = " r" + rA.ToString() + ", r" + rD.ToString();
+                    }
+                    else if (SO == 410) // extsh (Actually 922, but the previous bit (1) is from OE)
+                    {
+                        Output = "extsh";
+                        CS = " r" + rA.ToString() + ", r" + rD.ToString();
+                    }
+                    else if (SO == 470) // icbi (Actually 982, but the previous bit (1) is from OE)
+                    {
+                        Output = "icbi";
+                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
                     }
                     else
                     {
-                        CS += "r" + rD.ToString() + ", r" + rA.ToString() + ", r" + rB.ToString();
-                        if (SO == 266) // add
-                        {
-                            Output = "add";
-                        }
-                        else if (SO == 10) // addc
-                        {
-                            Output = "addc";
-                        }
-                        else if (SO == 138) // adde
-                        {
-                            Output = "adde";
-                        }
-                        else if (SO == 234) // addme
-                        {
-                            Output = "addme";
-                            CS = " r" + rD.ToString() + ", r" + rA.ToString();
-                        }
-                        else if (SO == 202) // addze
-                        {
-                            Output = "addze";
-                            CS = " r" + rD.ToString() + ", r" + rA.ToString();
-                        }
-                        else if (SO == 28) // and
-                        {
-                            Output = "and";
-                            CS = " r" + rA.ToString() + ", r" + rD.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 29) // andc
-                        {
-                            Output = "andc";
-                            CS = " r" + rA.ToString() + ", r" + rD.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 26) // cntlzw
-                        {
-                            Output = "cntlzw";
-                            CS = " r" + rA.ToString() + ", r" + rD.ToString();
-                        }
-                        else if (SO == 86) // dcbf
-                        {
-                            Output = "dcbf";
-                            CS = " r" + rA.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 470) // dcbi
-                        {
-                            Output = "dcbi";
-                            CS = " r" + rA.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 54) // dcbst
-                        {
-                            Output = "dcbst";
-                            CS = " r" + rA.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 278) // dcbt
-                        {
-                            Output = "dcbt";
-                            CS = " r" + rA.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 246) // dcbtst
-                        {
-                            Output = "dcbtst";
-                            CS = " r" + rA.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 502) // dcbz (Actually 1014, but the previous bit (1) is from OE)
-                        {
-                            Output = "dcbz";
-                            CS = " r" + rA.ToString() + ", r" + rB.ToString();
-                        }
-                        else if (SO == 491) // divw
-                        {
-                            Output = "divw";
-                        }
-                        else if (SO == 459) // divwu
-                        {
-                            Output = "divwu";
-                        }
-                        else if (SO == 310) // eciwx
-                        {
-                            Output = "eciwx";
-                        }
-                        else if (SO == 438) // ecowx
-                        {
-                            Output = "ecowx";
-                        }
-                        else if (SO == 342) // eieio (Actually 854, but the previous bit (1) is from OE)
-                        {
-                            Output = "eieio";
-                            CS = "";
-                        }
-                        else if (SO == 442) // extsb (Actually 954, but the previous bit (1) is from OE)
-                        {
-                            Output = "extsb";
-                            CS = " r" + rA.ToString() + ", r" + rD.ToString();
-                        }
-                        else if (SO == 410) // extsh (Actually 922, but the previous bit (1) is from OE)
-                        {
-                            Output = "extsh";
-                            CS = " r" + rA.ToString() + ", r" + rD.ToString();
-                        }
-                        else
-                        {
-                            NotInstruction();
-                        }
-                        if (OE == 1 && SO != 502 && SO != 342 && SO != 442 && SO != 410) // o
-                        {
-                            Output += "o";
-                        }
-                        if (Rc == 1) // .
-                        {
-                            Output += ".";
-                        }
+                        NotInstruction();
+                    }
+                    if (OE == 1 && SO != 502 && SO != 342 && SO != 442 && SO != 410 && SO != 470) // o
+                    {
+                        Output += "o";
+                    }
+                    if (Rc == 1) // .
+                    {
+                        Output += ".";
                     }
                     Output += CS;
+
                 }
                 else if (PO == 14) // addi
                 {
@@ -341,7 +340,185 @@ namespace PPC_750CL_ASM_DASM
                     UInt32 UIMM = ReadBits(m[i], 16);
                     Output = "cmpli " + crfD.ToString() + ", " + L.ToString() + ", r" + rA.ToString() + ", " + UIMM;
                 }
-
+                else if (PO == 63)
+                    // fabs (fabs, fabs.), fadd (fadd, fadd.), fcmpo, fcmpu, fctiw (fctiw, fctiw.), fctiwz (fctiwz, fctiwz.), fdiv (fdiv, fdiv.),
+                    // fmadd (fmadd, fmadd.), fmr (fmr, fmr.), fmsub (fmsub, fmsub.), fmul (fmul, fmul.), fnabs (fnabs, fnabs.),
+                    // fneg (fneg, fneg.), fnmadd (fnmadd, fnmadd.), fnmsub (fnmsub, fnmsub.), frsp (frsp, frsp.), frsqrte (frsqrte, frsqrte.),
+                    // fsel (fsel, fsel.), fsub (fsub, fsub.)
+                {
+                    UInt32 frD = ReadBits(m[i], 5);
+                    UInt32 frA = ReadBits(m[i], 5); // Reserved on fabs, fctiw, fctiwz, fmr, fnabs, fneg, frsp, frsqrte
+                    UInt32 frB = ReadBits(m[i], 5); // Reserved on fmul
+                    UInt32 SO = ReadBits(m[i], 10);
+                    UInt32 Rc = ReadBits(m[i], 1); // Reserved on fcmpo, fcmpu
+                    String CS = " fr" + frD.ToString() + ", fr" + frB.ToString();
+                    if (SO == 264) // fabs
+                    {
+                        Output = "fabs";
+                    }
+                    else if (SO == 21) // fadd
+                    {
+                        Output = "fadd";
+                        CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frB.ToString();
+                    }
+                    else if (SO == 32 || SO == 0) // fcmpo, fcmpu
+                    {
+                        p = 6;
+                        UInt32 crfD = ReadBits(m[i], 3);
+                        if (SO == 32)
+                        {
+                            Output = "fcmpo";
+                        }
+                        else
+                        {
+                            Output = "fcmpu";
+                        }
+                        CS = " crf" + crfD.ToString() + ", fr" + frA.ToString() + ", fr" + frB.ToString();
+                    }
+                    else if (SO == 14) // fctiw
+                    {
+                        Output = "fctiw";
+                    }
+                    else if (SO == 15) // fctiwz
+                    {
+                        Output = "fctiwz";
+                    }
+                    else if (SO == 18) // fdiv
+                    {
+                        Output = "fdiv";
+                        CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frB.ToString();
+                    }
+                    else if ((SO & 31) == 29 || (SO & 31) == 28 || (SO & 31) == 31 || (SO & 31) == 30 || (SO & 31) == 23)
+                        // fmadd, fmsub, fnmadd, fnmsub, fsel
+                    {
+                        UInt32 frC = SO & 992;
+                        if ((SO & 31) == 29) // fmadd
+                        {
+                            Output = "fmadd";
+                        }
+                        else if ((SO & 31) == 28) // fmsub
+                        {
+                            Output = "fmsub";
+                        }
+                        else if ((SO & 31) == 31) // fnmadd
+                        {
+                            Output = "fnmadd";
+                        }
+                        else if ((SO & 31) == 30) // fnmsub
+                        {
+                            Output = "fnmsub";
+                        }
+                        else // fsel
+                        {
+                            Output = "fsel";
+                        }
+                        CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frC.ToString() + ", fr" + frB.ToString();
+                    }
+                    else if (SO == 72) // fmr
+                    {
+                        Output = "fmr";
+                    }
+                    else if ((SO & 31) == 25) // fmul
+                    {
+                        UInt32 frC = SO & 992;
+                        Output = "fmul";
+                        CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frC.ToString();
+                    }
+                    else if (SO == 136) // fnabs
+                    {
+                        Output = "fnabs";
+                    }
+                    else if (SO == 40) // fneg
+                    {
+                        Output = "fneg";
+                    }
+                    else if (SO == 12) // frsp
+                    {
+                        Output = "frsp";
+                    }
+                    else if (SO == 26) // frsqrte
+                    {
+                        Output = "frsqrte";
+                    }
+                    else if (SO == 20) // fsub
+                    {
+                        Output = "fsub";
+                        CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frB.ToString();
+                    }
+                    else
+                    {
+                        NotInstruction();
+                    }
+                    if (Rc == 1) // .
+                    {
+                        Output += ".";
+                    }
+                    Output += CS;
+                }
+                else if (PO == 59)
+                    // fadds (fadds, fadds.), fdivs (fdivs, fdivs.), fmadds (fmadds, fmadds.), fmsubs (fmsubs, fmsubs.), fmuls (fmuls, fmuls.),
+                    // fnmadds (fnmadds, fnmadds.), fnmsubs (fnmsubs, fnmsubs.), fres (fres, fres.), fsubs (fsubs, fsubs.)
+                {
+                    UInt32 frD = ReadBits(m[i], 5);
+                    UInt32 frA = ReadBits(m[i], 5); // Reserved on fres
+                    UInt32 frB = ReadBits(m[i], 5); // Reserved on fmul
+                    UInt32 SO = ReadBits(m[i], 10);
+                    UInt32 Rc = ReadBits(m[i], 1);
+                    String CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frB.ToString();
+                    if (SO == 21) // fadds
+                    {
+                        Output = "fadds";
+                    }
+                    else if (SO == 18) // fdivs
+                    {
+                        Output = "fdivs";
+                    }
+                    else if ((SO & 31) == 29 || (SO & 31) == 28 || (SO & 31) == 31 || (SO & 31) == 30) // fmadds, fmsubs, fnmadds, fnmsubs
+                    {
+                        UInt32 frC = SO & 992;
+                        if ((SO & 31) == 29)
+                        {
+                            Output = "fmadds";
+                        }
+                        else if ((SO & 31) == 28)
+                        {
+                            Output = "fmsubs";
+                        }
+                        else if ((SO & 31) == 31)
+                        {
+                            Output = "fnmadds";
+                        }
+                        else
+                        {
+                            Output = "fnmsubs";
+                        }
+                        CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frC.ToString() + ", fr" + frB.ToString();
+                    }
+                    else if ((SO & 31) == 25) // fmuls
+                    {
+                        UInt32 frC = SO & 992;
+                        Output = "fmuls";
+                        CS = " fr" + frD.ToString() + ", fr" + frA.ToString() + ", fr" + frC.ToString();
+                    }
+                    else if (SO == 24) // fres
+                    {
+                        Output = "fres";
+                        CS = " fr" + frD.ToString() + ", fr" + frB.ToString();
+                    }
+                    else if (SO == 21) // fsubs
+                    {
+                        Output = "fsubs";
+                    }
+                    else
+                    {
+                        NotInstruction();
+                    }
+                    if (Rc == 1) // .
+                    {
+                        Output += ".";
+                    }
+                    Output += CS;
+                }
                 ASM.Text += Output + "\n";
             }
         }
