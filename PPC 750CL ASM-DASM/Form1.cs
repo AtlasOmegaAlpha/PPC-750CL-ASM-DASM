@@ -33,15 +33,18 @@ namespace PPC_750CL_ASM_DASM
                 // add (add, add., addo, addo.), addc (addc, addc. addco, addco.), adde (adde, adde., addeo, addeo.),
                 // addme (addme, addme., addmeo, addmeo.). addze (addze, addze., addzeo, addzeo.), and (and, and.), andc (andc, andc.),
                 // cmp, cmpl, cntlzw (cntlzw, cntlzw.), dcbf, dcbi, dcbst, dcbt, dcbtst, divw, divwu, eciwx, ecowx, eieio, eqv (eqv, eqv.)
-                // extsb, extsh, icbi
+                // extsb, extsh, icbi, lbzux, lbzx, lfdux, lfdx, lfsux, lfsx, lhaux, lhax, lhbrx, lzhux, lzhx
                 {
                     UInt32 rD = ReadBits(m[i], 5);
-                    // Reserved on dcbf, dcbi, dcbst, dcbt, dcbtst, eieio; rS on and, andc, cntlzw, ecowx, eqv, extsb, extsh, icbi
+                    // Reserved on dcbf, dcbi, dcbst, dcbt, dcbtst, eieio; rS on and, andc, cntlzw, ecowx, eqv, extsb, extsh, icbi;
+                    // frD on lfdux, lfdx, lfsux, lfsx
                     UInt32 rA = ReadBits(m[i], 5); // Reserved on eieio
                     UInt32 rB = ReadBits(m[i], 5); // Reserved on addme, addze, cntlzw, eieio, extsb, extsh
                     UInt32 OE = ReadBits(m[i], 1);
                     UInt32 SO = ReadBits(m[i], 9);
-                    UInt32 Rc = ReadBits(m[i], 1); // Reserved on dcbf, dcbi, dcbst, dcbt, dcbtst, eciwx, ecowx, eieio
+                    UInt32 Rc = ReadBits(m[i], 1);
+                    // Reserved on dcbf, dcbi, dcbst, dcbt, dcbtst, eciwx, ecowx, eieio, lbzux, lbzx, lfdux, lfsx, lhaux, lhax,
+                    // lhbrx, lzhux, lzhx
                     String CS = " ";
                     CS += "r" + rD.ToString() + ", r" + rA.ToString() + ", r" + rB.ToString();
                     if (SO == 266) // add
@@ -111,10 +114,17 @@ namespace PPC_750CL_ASM_DASM
                         Output = "dcbst";
                         CS = " r" + rA.ToString() + ", r" + rB.ToString();
                     }
-                    else if (SO == 278) // dcbt
+                    else if (SO == 278) // dcbt, lhbrx (For lhbrx: actually 790, but the previous bit (1) is from OE)
                     {
-                        Output = "dcbt";
-                        CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                        if (OE == 1)
+                        {
+                            Output = "lhbrx";
+                        }
+                        else
+                        {
+                            Output = "dcbt";
+                            CS = " r" + rA.ToString() + ", r" + rB.ToString();
+                        }
                     }
                     else if (SO == 246) // dcbtst
                     {
@@ -169,11 +179,62 @@ namespace PPC_750CL_ASM_DASM
                         Output = "icbi";
                         CS = " r" + rA.ToString() + ", r" + rB.ToString();
                     }
+                    else if (SO == 119) // lbzux, lfdux (For lfdux: actually 631, but the previous bit (1) is from OE)
+                    {
+                        if (OE == 1)
+                        {
+                            Output = "lfdux";
+                            CS = " fr" + rD.ToString() + ", r" + rA.ToString() + ", r" + rB.ToString();
+                        }
+                        else
+                        {
+                            Output = "lbzux";
+                        }
+                    }
+                    else if (SO == 87) // lbzx, lfdx (For lfdx: actually 599, but the previous bit (1) is from OE)
+                    {
+                        if (OE == 1)
+                        {
+                            Output = "lfdx";
+                            CS = " fr" + rD.ToString() + ", r" + rA.ToString() + ", r" + rB.ToString();
+                        }
+                        else
+                        {
+                            Output = "lbzx";
+                        }
+                    }
+                    else if (SO == 55) // lfsux (Actually 567, but the previous bit (1) is from OE)
+                    {
+                        Output = "lfsux";
+                        CS = " fr" + rD.ToString() + ", r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 23) // lfsx (Actually 535, but the previous bit (1) is from OE)
+                    {
+                        Output = "lfsx";
+                        CS = " fr" + rD.ToString() + ", r" + rA.ToString() + ", r" + rB.ToString();
+                    }
+                    else if (SO == 375) // lhaux
+                    {
+                        Output = "lhaux";
+                    }
+                    else if (SO == 343) // lhax
+                    {
+                        Output = "lhax";
+                    }
+                    else if (SO == 311) // lhzux
+                    {
+                        Output = "lhzux";
+                    }
+                    else if (SO == 279) // lzhx
+                    {
+                        Output = "lzhx";
+                    }
                     else
                     {
                         NotInstruction();
                     }
-                    if (OE == 1 && SO != 502 && SO != 342 && SO != 442 && SO != 410 && SO != 470) // o
+                    if (OE == 1 && SO != 502 && SO != 342 && SO != 442 && SO != 410 && SO != 470 && SO != 119 && SO != 87
+                        && SO != 55 && SO != 23 && SO != 278) // o
                     {
                         Output += "o";
                     }
@@ -262,13 +323,13 @@ namespace PPC_750CL_ASM_DASM
                     }
                     Output += CS;
                 }
-                else if (PO == 19) // bcctr, bclr, crand, crandc, creqv, crnand, crnor, cror, crorc, crxor
+                else if (PO == 19) // bcctr, bclr, crand, crandc, creqv, crnand, crnor, cror, crorc, crxor, isync
                 {
-                    UInt32 BO = ReadBits(m[i], 5); // crbD on crand, crandc, creqv, crnand, crnor, cror, crorc, crxor
-                    UInt32 BI = ReadBits(m[i], 5); // crbA on crand, crandc, creqv, crnand, crnor, cror, crorc, crxor
-                    UInt32 crbB = ReadBits(m[i], 5); // Reserved on bcctr, bclr
+                    UInt32 BO = ReadBits(m[i], 5); // crbD on crand, crandc, creqv, crnand, crnor, cror, crorc, crxor; reserved on isync
+                    UInt32 BI = ReadBits(m[i], 5); // crbA on crand, crandc, creqv, crnand, crnor, cror, crorc, crxor; reserved on isync
+                    UInt32 crbB = ReadBits(m[i], 5); // Reserved on bcctr, bclr, isync
                     UInt32 SO = ReadBits(m[i], 10);
-                    UInt32 LK = ReadBits(m[i], 1); // Reserved on crand, crandc, creqv, crnand, crnor, cror, crorc, crxor
+                    UInt32 LK = ReadBits(m[i], 1); // Reserved on crand, crandc, creqv, crnand, crnor, cror, crorc, crxor, isync
                     String CS = " crb" + BO.ToString() + ", crb" + BI.ToString() + ", crb" + crbB.ToString();
                     if (SO == 528) // bcctr
                     {
@@ -311,6 +372,10 @@ namespace PPC_750CL_ASM_DASM
                     else if (SO == 193) // crxor
                     {
                         Output = "crxor";
+                    }
+                    else if (SO == 150) // isync
+                    {
+                        Output = "isync";
                     }
                     else
                     {
@@ -518,6 +583,83 @@ namespace PPC_750CL_ASM_DASM
                         Output += ".";
                     }
                     Output += CS;
+                }
+                else if (PO == 34) // lbz
+                {
+                    UInt32 rD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lbz r" + rD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 35) // lbzu
+                {
+                    UInt32 rD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lbzu r" + rD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 50) // lfd
+                {
+                    UInt32 frD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lfd fr" + frD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 51) // lfdu
+                {
+                    UInt32 frD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lfdu fr" + frD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 48) // lfs
+                {
+                    UInt32 frD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lfs fr" + frD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 49) // lfsu
+                {
+                    UInt32 frD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lfsu fr" + frD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 42) // lha
+                {
+                    UInt32 rD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lha r" + rD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 43) // lhau
+                {
+                    UInt32 rD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lhau r" + rD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 40) // lhz
+                {
+                    UInt32 rD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lhz r" + rD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 41) // lhzu
+                {
+                    UInt32 rD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lhzu r" + rD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
+                }
+                else if (PO == 46) // lmw
+                {
+                    UInt32 rD = ReadBits(m[i], 5);
+                    UInt32 rA = ReadBits(m[i], 5);
+                    UInt32 d = ReadBits(m[i], 16);
+                    Output = "lmw r" + rD.ToString() + ", " + d.ToString() + " (r" + rA.ToString() + ")";
                 }
                 ASM.Text += Output + "\n";
             }
